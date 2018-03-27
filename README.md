@@ -68,3 +68,10 @@ python sql2neo4j.py
 * You can either define your graph label names in the configuration file or change them in neo4j after the transfer finished 
 * By default, we use "Table1ToTable2" as the relationship name for the two related tables, you can change it in neo4j as well after the transfer finished 
 * In case there is some unexpected issue happened during exporting from RDBMS or importing to Neo4j, you can find the row failed position and skip those rows which have been imported to neo4j successfully by setting the "query_start_point" in the configuration file
+
+---
+## MySQL architecture
+![image](https://github.com/PerfectiisShit/sql2neo4j/blob/master/imgs/mysql%20diagram.PNG)
+
+## Neo4j Graph
+![image](https://github.com/PerfectiisShit/sql2neo4j/blob/master/imgs/MSS2Neo.PNG)
