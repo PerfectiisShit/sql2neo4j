@@ -64,7 +64,7 @@ class Table2Label(object):
                 cursor = _graph.run(
                     "MATCH (a:{n}), (b:{m}) "
                     "WHERE a.{p} = b.{q} "
-                    "MERGE (a)-[:{r}]->(b)"
+                    "MERGE (a)<-[:{r}]-(b)"
                     .format(
                         n=self.graph_label_name,
                         m=related_graph_name,
