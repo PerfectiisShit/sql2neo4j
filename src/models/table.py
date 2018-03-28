@@ -83,17 +83,17 @@ class TableModel(DBModel):
         self._primary_key = result['column_name']
 
     def get_foreign_keys(self):
-        sql = """SELECT key_column_usage.column_name AS column_name, 
-                   key_column_usage.referenced_table_name AS referenced_table_name,
-                   key_column_usage.referenced_column_name AS referenced_column_name
-                 FROM key_column_usage
-                 LEFT JOIN table_constraints
-                   ON key_column_usage.table_schema = table_constraints.table_schema
-                     AND key_column_usage.table_name = table_constraints.table_name
-                     AND key_column_usage.constraint_name = table_constraints.constraint_name
-                 WHERE key_column_usage.table_schema = '%s'
-                   AND key_column_usage.table_name = '%s'
-                   AND table_constraints.constraint_type = 'foreign key'
+        sql = """SELECT information_schema.key_column_usage.column_name AS column_name, 
+                   information_schema.key_column_usage.referenced_table_name AS referenced_table_name,
+                   information_schema.key_column_usage.referenced_column_name AS referenced_column_name
+                 FROM information_schema.key_column_usage
+                 LEFT JOIN information_schema.table_constraints
+                   ON information_schema.key_column_usage.table_schema = information_schema.table_constraints.table_schema
+                     AND information_schema.key_column_usage.table_name = information_schema.table_constraints.table_name
+                     AND information_schema.key_column_usage.constraint_name = information_schema.table_constraints.constraint_name
+                 WHERE information_schema.key_column_usage.table_schema = '%s'
+                   AND information_schema.key_column_usage.table_name = '%s'
+                   AND information_schema.table_constraints.constraint_type = 'foreign key'
         """ % (self._db, self._table)
         self._foreign_keys = self.query(sql)
         if self._foreign_keys is False:
