@@ -61,7 +61,7 @@ class Table2Label(object):
             realted_property = key['referenced_column_name']
             relationship_name = self.graph_label_name + 'To' + related_graph_name
             try:
-                _graph.run(
+                cursor = _graph.run(
                     "MATCH (a:{n}), (b:{m}) "
                     "WHERE a.{p} = b.{q} "
                     "MERGE (a)-[:{r}]->(b)"
@@ -73,10 +73,13 @@ class Table2Label(object):
                         r=relationship_name
                     )
                 )
-                self.log("Succeed to create relationship {}".format(relationship_name))
+                result = cursor.stats()['relationships_created']
+                self.log("Succeed to create {} {} relationships".format(result, relationship_name))
             except Exception as e:
                 self.log("Failed to create relationship {}".format(relationship_name), level="error")
                 self.log(str(e), level="debug", traceback=True)
+            finally:
+                cursor.close()
     
     def create_indexes(self):
         # TODO: Create index per the indexes in DATABASE table
