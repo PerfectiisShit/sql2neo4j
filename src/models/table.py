@@ -83,10 +83,19 @@ class TableModel(DBModel):
         self._primary_key = result['column_name']
 
     def get_foreign_keys(self):
-        select_fields = ['column_name', 'referenced_table_name', 'referenced_column_name']
-        table = "information_schema.key_column_usage"
-        condition = {'table_schema': self._db, 'table_name': self._table, 'constraint_name': self._table+"_ibfk_1"}
-        self._foreign_keys = self.select(table=table, fields=select_fields, condition=condition)
+        sql = """SELECT key_column_usage.column_name AS column_name, 
+                   key_column_usage.referenced_table_name AS referenced_table_name,
+                   key_column_usage.referenced_column_name AS referenced_column_name
+                 FROM key_column_usage
+                 LEFT JOIN table_constraints
+                   ON key_column_usage.table_schema = table_constraints.table_schema
+                     AND key_column_usage.table_name = table_constraints.table_name
+                     AND key_column_usage.constraint_name = table_constraints.constraint_name
+                 WHERE key_column_usage.table_schema = '%s'
+                   AND key_column_usage.table_name = '%s'
+                   AND table_constraints.constraint_type = 'foreign key'
+        """ % (self._db, self._table)
+        self._foreign_keys = self.query(sql)
         if self._foreign_keys is False:
             raise SQLDBError("Couldn't query information_schema table, make sure you have correct access to the db")
 
