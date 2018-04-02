@@ -7,6 +7,13 @@ from datetime import datetime
 from libraries.config import config
 
 
+def enable_debug_logger(file_path):
+    logger = logging.getLogger()
+    handler = logging.FileHandler(file_path + '-debug')
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+
+
 class Logger(object):
     def __init__(self, file_path, level):
         self.logger = logging.getLogger("sql2neo4j")
@@ -60,6 +67,9 @@ def get_logger():
         level = config.get('LOG_LEVEL', 'INFO')
         if file_path != '' and os.path.exists(os.path.dirname(file_path)):
             __logger = Logger(file_path, level)
+            if level.lower == "debug":
+                # Enable the logging of py2neo module to see more detailed debug information
+                enable_debug_logger(file_path)
         else:
             raise OSError("Log folder %s does not exist!" % os.path.dirname(file_path))
     return __logger

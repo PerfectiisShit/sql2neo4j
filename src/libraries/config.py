@@ -6,6 +6,7 @@ with open("/etc/sql2neo4j.conf", "r") as f:
     config = json.load(f)
     DB_NAME = config['DATABASE']['database']
     DB_DRIVER = config['DATABASE'].get('driver', 'mysql').lower()
+    THREAD_POOL = config.get('THREAD_POOL', 20)
     TABLE_GRAPH_MAPPING = {}
     for table in config['DATABASE']['tables']:
         table_name = table.get('name', '')

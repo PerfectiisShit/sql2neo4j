@@ -54,13 +54,13 @@ class FieldProperty(Property):
         return instance.__ogm__.node[self.key]
 
     def __set__(self, instance, value):
-        if value is None:
-            instance.__ogm__.node[self.key] = value
-
-        if hasattr(self, self.type):
-            instance.__ogm__.node[self.key] = getattr(self, self.type)(value)
+        if value is None or value == "":
+            instance.__ogm__.node[self.key] = None
         else:
-            instance.__ogm__.node[self.key] = value.encode('utf-8')
+            if hasattr(self, self.type):
+                instance.__ogm__.node[self.key] = getattr(self, self.type)(value)
+            else:
+                instance.__ogm__.node[self.key] = value.encode('utf-8')
 
     @staticmethod
     def _tinyint2neo(value):
@@ -86,7 +86,7 @@ class FieldProperty(Property):
 
     @staticmethod
     def _datetime2neo(value):
-        return value.isoformat()
+        return value.isoformat(' ')
 
     _timestamp2neo = _datetime2neo
     _datetime22neo = _datetime2neo
@@ -101,3 +101,4 @@ class FieldProperty(Property):
     _numeric2neo = _decimal2neo
     _money2neo = _decimal2neo
     _smallmoney2neo = _decimal2neo
+

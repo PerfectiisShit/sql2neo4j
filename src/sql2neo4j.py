@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from threading import Thread
+from time import time
 
 from libraries.config import config
 from table2graph import Table2Label
@@ -31,4 +32,7 @@ def main():
         t.create_relationships()
 
 if __name__ == "__main__":
+    start = time()
     main()
+    finish = time()
+    print "Total time spent: {}".format(int(start-finish))

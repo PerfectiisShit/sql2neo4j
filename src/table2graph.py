@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from libraries.config import TABLE_GRAPH_MAPPING
+from libraries.config import TABLE_GRAPH_MAPPING, THREAD_POOL
 from libraries.dbs.graph import MyGraph
-from libraries.errors import SQL2GraphError
 from libraries.log import get_logger
 from models.graph import CKGraphObject, FieldProperty
 from models.table import TableModel
+from multiprocessing.pool import ThreadPool
 
 
 class Table2Label(object):
@@ -14,6 +14,7 @@ class Table2Label(object):
         self._graph = MyGraph(self.graph_label_name)
         self.graph_object = None
         self.related_graphs = []
+        self.wb = None
         self.exported_rows = 0
         self.imported_graphs = 0
 
@@ -59,7 +60,7 @@ class Table2Label(object):
             related_table = key['referenced_table_name']
             related_graph_name = self.lookup_graph_name(related_table)
             realted_property = key['referenced_column_name']
-            relationship_name = self.graph_label_name + 'To' + related_graph_name
+            relationship_name = related_graph_name + '_HAS_' + self.graph_label_name
             try:
                 cursor = _graph.run(
                     "MATCH (a:{n}), (b:{m}) "
@@ -74,7 +75,7 @@ class Table2Label(object):
                     )
                 )
                 result = cursor.stats()['relationships_created']
-                self.log("Succeed to create {} {} relationships".format(result, relationship_name))
+                self.log("Succeed to create {} '{}' relationships".format(result, relationship_name))
             except Exception as e:
                 self.log("Failed to create relationship {}".format(relationship_name), level="error")
                 self.log(str(e), level="debug", traceback=True)
@@ -84,37 +85,65 @@ class Table2Label(object):
     def create_indexes(self):
         # TODO: Create index per the indexes in DATABASE table
         pass
-    
-    def row2graph(self, rows):
-        if rows:
-            try:
-                # graph_tx = self._graph.begin()
-                for row in rows:
-                    self.logger.debug("Import data to {} :".format(self.graph_label_name) + str(row), self.log_type)
-                    gobject = self.graph_object()
-                    for k, v in row.iteritems():
-                        if v is None or v == '':
-                            continue
 
-                        setattr(gobject, k, v)
+    def row2graph(self, row):
+        self.logger.debug("Import data to {} :".format(self.graph_label_name) + str(row), self.log_type)
+        try:
+            gobject = self.graph_object()
+            for k, v in row.iteritems():
+                setattr(gobject, k, v)
 
-                    self._graph.push(gobject)
-                    self.imported_graphs += 1
+            self._graph.push(gobject)
+            self.imported_graphs += 1
+        except Exception as e:
+            self.log(msg="Failed to import data to graph db at importing point: " + str(self.imported_graphs),
+                     level="error")
+            self.log(msg=str(e), level="debug", traceback=True)
 
-                # graph_tx.commit()
-                # self.imported_graphs += len(rows)
-            except Exception as e:
-                self.log("Neo4j import '{}' stopped at query point: {}".
-                         format(self.graph_label_name, self.imported_graphs), level="error")
-                self.log(str(e), level="debug", traceback=True)
-                raise SQL2GraphError("Got unexpected error while importing data to neo4j!")
+    # def batch_write(self, nodes):
+    #     try:
+    #         self.wb = WriteBatch(self._graph)
+    #         for node in nodes:
+    #             job = self.wb.create(node)
+    #             self.wb.add_labels(job, self.graph_label_name)
+    #
+    #         self.wb.run()
+    #         self.imported_graphs += len(nodes)
+    #     except Exception as e:
+    #         msg = "Neo4j import '{}' stopped at query point: {}".format(self.graph_label_name, self.imported_graphs)
+    #         self.log(msg, level="error")
+    #         self.log(str(e), level="debug", traceback=True)
+    #         raise SQL2GraphError("Got unexpected error while importing data to neo4j!")
+
+    # def row2graph(self, row):
+    #     try:
+    #         self.logger.debug("Import data to {} :".format(self.graph_label_name) + str(row), self.log_type)
+    #         gobject = self.graph_object()
+    #         for k, v in row.iteritems():
+    #             setattr(gobject, k, v)
+    #
+    #         self._graph.push(gobject)
+    #         self.imported_graphs += 1
+    #
+    #     except Exception as e:
+    #         msg = "Neo4j import '{}' stopped at query point: {}".format(self.graph_label_name, self.imported_graphs)
+    #         self.log(msg, level="error")
+    #         self.log(str(e), level="debug", traceback=True)
+    #         raise SQL2GraphError("Got unexpected error while importing data to neo4j!")
+
+    def import2graph(self, rows):
+        pool = ThreadPool(THREAD_POOL)
+        results = pool.map(self.row2graph, rows)
+        pool.close()
+        pool.join()
+        return results
 
     def generate_graph(self):
         while self._table.query_start_point >= 0:
             rows = self._table.query_rows()
             if rows:
-                self.row2graph(rows)
                 self.exported_rows += len(rows)
+                self.import2graph(rows)
                 if len(rows) == self._table.query_length:
                     self._table.query_start_point += self._table.query_length
                     continue
@@ -122,4 +151,4 @@ class Table2Label(object):
             self._table.query_start_point = -1
 
         self.log("Exported {} rows from table '{}'".format(self.exported_rows, self._table.table_name))
-        self.log("Imported {} graphs to '{}'".format(self.imported_graphs, self.graph_object.__name__))
+        self.log("Imported {} '{}' nodes to graph database".format(self.imported_graphs, self.graph_object.__name__))
